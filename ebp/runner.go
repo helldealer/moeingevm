@@ -37,7 +37,7 @@ type (
 )
 
 const (
-	EnableRWList = false
+	EnableRWList = true
 )
 
 var PredefinedContractManager map[common.Address]types.SystemContractExecutor
@@ -320,7 +320,9 @@ func (runner *TxRunner) getBlockHash(num C.uint64_t) (result evmc_bytes32) {
 // Refund gas fee to the sender according to the real consumed gas
 func (runner *TxRunner) refundGasFee(ret_value *evmc_result, refund C.uint64_t) {
 	if runner.ForRpc {
-		return
+		if runner.Tx.From == (common.Address{}) {
+			return
+		}
 	}
 	gasUsed := runner.Tx.Gas - uint64(ret_value.gas_left)
 	if AdjustGasUsed {
