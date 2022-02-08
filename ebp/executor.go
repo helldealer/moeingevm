@@ -10,6 +10,8 @@ import (
 )
 
 type TxExecutor interface {
+	SerializeExecute(currBlock *types.BlockInfo)
+
 	//step 1: for deliverTx, collect block txs in engine.txList
 	CollectTx(tx *gethtypes.Transaction)
 	//step 2: for commit, check sig, insert regular txs standbyTxQ

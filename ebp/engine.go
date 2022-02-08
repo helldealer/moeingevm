@@ -3,6 +3,7 @@ package ebp
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -418,6 +419,17 @@ func (exec *txEngine) recordInvalidTx(info *preparedInfo) {
 	exec.committedTxs = append(exec.committedTxs, tx)
 }
 
+func (exec *txEngine) SerializeExecute(currBlock *types.BlockInfo) {
+	var txBundle []types.TxToRun
+	for _, tx := range exec.txList {
+		txToRun := &types.TxToRun{}
+		sender, _ := exec.signer.Sender(tx)
+		txToRun.FromGethTx(tx, sender, exec.getCurrHeight())
+		txBundle = append(txBundle, *txToRun)
+	}
+	exec.runTxInSerialize(txBundle, currBlock)
+}
+
 // Fetch TXs from standby queue and execute them
 func (exec *txEngine) Execute(currBlock *types.BlockInfo) {
 	exec.committedTxs = exec.committedTxs[:0]
@@ -526,6 +538,17 @@ func (exec *txEngine) runTxInParallel(txRange *TxRange, txBundle []types.TxToRun
 			}
 		}
 	})
+	return
+}
+
+func (exec *txEngine) runTxInSerialize(txBundle []types.TxToRun, currBlock *types.BlockInfo) {
+	for i := 0; i < len(txBundle); i++ {
+		Runners[0] = NewTxRunner(exec.cleanCtx.WithRbtCopy(), &txBundle[i])
+		runTx(0, currBlock)
+		fmt.Printf("runTx: hash:%s\n", txBundle[i].HashID.String())
+		Runners[0].Ctx.Rbt.CloseAndWriteBack(true)
+		Runners[0] = nil
+	}
 	return
 }
 
